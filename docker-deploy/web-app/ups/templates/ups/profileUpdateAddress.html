@@ -1,0 +1,21 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Update Address</title>
+    <link rel="stylesheet" href="{% static 'css/updateAddress.css' %}">
+</head>
+<body>
+    <div class="container">
+        <h1>Update Address for Package ID: {{ packageId }}</h1>
+        <form action="{% url 'profileUpdateAddress' %}" method="post">
+            {% csrf_token %}
+            <label for="endAddress">New End Address:</label>
+            <input type="text" id="endAddress" name="endAddress" required>
+            <input type="hidden" name="packageId" value="{{ packageId }}">
+            <button type="submit">Update Address</button>
+        </form>
+    </div>
+</body>
+</html>

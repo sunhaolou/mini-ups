@@ -1,0 +1,399 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Profile</title>
+    <link rel="stylesheet" href="{% static 'css/profile.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+
+        .close {
+            color: #aaaaaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+
+
+        .progress-bar-container {
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            background-color: #e0e0e0;
+            padding: 3px;
+            border-radius: 5px;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .progress-bar-fill {
+            display: block;
+            height: 20px;
+            background-color: #5cb85c;
+            border-radius: 5px;
+            transition: width 0.6s ease;
+            width: 0%; /* Initial width */
+        }
+
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 10px;
+        }
+
+        .step {
+            text-align: center;
+            width: 100%;
+            display: block;
+        }
+
+        .complete {
+            color: #5cb85c;
+        }
+
+    </style>
+
+
+
+</head>
+
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="profile-info">
+                <img class="profile-image" src="{% static 'img/profile.ico' %}" alt="Profile Image">
+                <h2>Hello, {{ user.username }}</h2>
+                <p>UPS ID: {{ user.id }}</p>
+                <p>Email: {{ user.email }}</p>
+                <p>Phone Number: {{ user.phone_number }}</p>
+                <a href="{% url 'profileUpdate' %}" class="edit-button">
+                    <button class="edit-button">Edit Profile</button>
+                </a>
+                <p></p>
+                <a href="{% url 'logout' %}" class="logout-button">
+                    <button class="logout-button">Logout</button>
+                </a>
+            </div>
+
+
+
+
+        </aside>
+
+        <main class="main-content">
+            <div class="search-container">
+                <select id="searchField" class="search-dropdown">
+                    <option value="trackNumber">Tracking Number</option>
+                    <option value="startLocation">Start</option>
+                    <option value="endLocation">Destination</option>
+                    <option value="status">Status</option>
+                </select>
+                <input type="text" id="searchInput" placeholder="Search...">
+                <button type="button" class="search-button" onclick="filterPackages()">Search</button>
+            </div>
+
+            <div class="packages">
+                <h1>Packages / History</h1>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Package ID</th>
+                            <th>Tracking Number</th>
+                            <th>UPS ID</th>
+                            <th>Start</th>
+                            <th>Destination</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for package in packages %}
+                        <tr class="package-row"
+                            data-package-id="{{ package.id }}"
+                            data-tracking-number="{{ package.track_number }}"
+                            data-start-location="{{ package.start_x }}, {{ package.start_y }}"
+                            data-end-location="{{ package.end_x }}, {{ package.end_y }}"
+                            data-status="{{ package.get_package_status_display }}">
+                            <td class="id">{{ package.id }}</td>
+                            <td class="trackNumber">{{ package.track_number }}</td>
+                            <td class="userId">{{ package.user.id }}</td>
+                            <td class="startLocation">（{{ package.start_x }}, {{ package.start_y }}）</td>
+                            <td class="endLocation" id="address-{{ package.id }}">（{{ package.end_x }}, {{ package.end_y }}）</td>
+                            <td class="status">{{ package.get_package_status_display }}</td>
+                            <td>
+                                {% if package.package_status != 'd' %}
+                                    <button class="edit-address" onclick="showModal({{ package.id }})">Edit Address</button>
+                                {% else %}
+                                    <button class="disable-button" disabled>Edit Address</button>
+                                {% endif %}
+                                <button class="view-detail" onclick="showDetailModal({{ package.id }})">View Detail</button>
+                            </td>
+                        </tr>
+
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeEditModal()">&times;</span>
+            <h2>Package Details</h2>
+
+            <p>Tracking Number: <span id="detailTrackingNumber"></span></p>
+            <p>Start Location: <span id="detailStartLocation"></span></p>
+            <p>Current Destination: <span id="detailEndLocation"></span></p>
+            <p>Description: <span id="detailDescription"></span></p>
+            <p>Status: <span id="detailStatus"></span></p>
+
+            <h2>Edit Destination</h2>
+            <form id="editAddressForm">
+                <input type="hidden" id="editPackageId" name="packageId">
+
+                <label for="newEndX">New Destination X:</label>
+                <input type="text" id="newEndX" name="newEndX" required>
+
+                <label for="newEndY">New Destination Y:</label>
+                <input type="text" id="newEndY" name="newEndY" required>
+
+                <button class="update-address" type="submit">Update Address</button>
+            </form>
+        </div>
+    </div>
+
+
+
+
+
+    <!-- Modal -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeDetailModal()">&times;</span>
+            <div id="progressBarContainer" class="progress-bar-container">
+                <div class="progress-bar">
+                    <div id="progressBarFill" class="progress-bar-fill"></div>
+                </div>
+                <div class="progress-steps">
+                    <span class="step" id="waitforpickup">wait for pick up</span>
+                    <span class="step" id="outfordelivery">out for delivery</span>
+                    <span class="step" id="deliveredfordelivery">delivered for delivery</span>
+                </div>
+            </div>
+            <div id="packageDetails">
+
+
+                <h2>Package Details</h2>
+                <p id="ViewTrackingNumber"></p>
+                <p id="ViewFrom"></p>
+                <p id="ViewTo"></p>
+                <p id="ViewStatus"></p>
+                <p id="ViewDescription"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+          function showModal(id) {
+            fetch(`/package-detail/${id}/`, {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log("this is show Model: ")
+                    console.log(data)
+                    document.getElementById('detailTrackingNumber').textContent = data.data.track_number;
+                    document.getElementById('detailStartLocation').textContent = data.data.start_location;
+                    document.getElementById('detailEndLocation').textContent = data.data.end_location;
+                    document.getElementById('detailDescription').textContent = data.data.description;
+                    document.getElementById('detailStatus').textContent = data.data.current_status;
+                    document.getElementById('editPackageId').value = id;
+                    // 显示模态框
+                    document.getElementById('editModal').style.display = 'block';
+                } else {
+                    alert('Failed to fetch package details in flag1: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Error fetching details in flag2: ' + error.message);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('editAddressForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+                console.log("Form submission listener triggered");
+
+                var packageId = document.getElementById('editPackageId').value;
+                var newEndX = document.getElementById('newEndX').value;
+                var newEndY = document.getElementById('newEndY').value;
+
+                var formData = new FormData();
+                formData.append('newEndX', newEndX);
+                formData.append('newEndY', newEndY);
+
+                fetch(`/update-destination/${packageId}/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update the UI to reflect the new address
+                        var newAddress = `(${newEndX}, ${newEndY})`; // Format the new address
+                        document.getElementById('address-' + packageId).textContent = newAddress;
+                        closeEditModal(); // Close the modal if update is successful
+                    } else {
+                        // Handle errors
+                        alert('Failed to update address: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    // Handle errors
+                    alert('Error updating address: ' + error.message);
+                });
+            });
+        });
+
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+
+        function filterPackages() {
+            var input, filter, table, tr, td, i, txtValue;
+            input = document.getElementById("searchInput");
+            filter = input.value.toUpperCase();
+            table = document.getElementsByTagName("table")[0];
+            tr = table.getElementsByTagName("tr");
+            var field = document.getElementById("searchField").value; // This should match the class names
+
+            for (i = 1; i < tr.length; i++) {
+                td = tr[i].getElementsByClassName(field)[0];
+                if (td) {
+                    txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
+            }
+        }
+
+
+
+        function showDetailModal(id) {
+            // Fetch package details from the server
+            fetch(`/package-detail/${id}/`, {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const details = data.data;
+                    document.getElementById('ViewTrackingNumber').textContent = "Tracking Number: "+ details.track_number;
+                    document.getElementById('ViewFrom').textContent = 'From: ' + details.start_location;
+                    document.getElementById('ViewTo').textContent = 'To: ' + details.end_location;
+                    document.getElementById('ViewStatus').textContent = 'Status: ' + details.current_status;
+                    document.getElementById('ViewDescription').textContent = 'Description: ' + details.description;
+                    updateProgress(details.current_status);
+                    document.getElementById('detailModal').style.display = 'block';
+                } else {
+                    throw new Error(data.error);
+                }
+            })
+            .catch(error => {
+                alert('Failed to fetch package details: ' + error.message);
+            });
+        }
+
+
+        function updateProgress(currentStatus) {
+            const statuses = {
+                "wait for pick up": 33,
+                "out for delivery": 66,
+                "delivered for delivery": 100
+            };
+
+            // Set the width of the progress bar fill
+            var progressFill = document.getElementById('progressBarFill');
+            progressFill.style.width = statuses[currentStatus.toLowerCase()] + '%';
+
+            // Update step classes based on current status
+            document.querySelectorAll('.progress-steps .step').forEach(step => {
+                if (step.id.toLowerCase().includes(currentStatus.replace(" ", ""))) {
+                    step.classList.add('complete');
+                } else {
+                    step.classList.remove('complete');
+                }
+            });
+        }
+        function closeDetailModal() {
+            var modal = document.getElementById('detailModal');
+            modal.style.display = "none";
+        }
+
+        window.onclick = function (event) {
+            var modal = document.getElementById('detailModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+
+</body>
+</html>

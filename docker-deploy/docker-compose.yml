@@ -1,0 +1,56 @@
+version: '2'
+
+services:
+  ups:
+    build: ./ups_server
+    volumes:
+      - .:/ups
+    command: bash -c "sleep 10 && python3 /server_code/server.py"
+    expose:
+      - "8888"
+    ports:
+      - "8888:8888"
+    depends_on:
+      - db
+
+  db:
+    image: postgres
+    volumes:
+      - data-volume:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      - TZ=UTC
+      - POSTGRES_DB=ups_database
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+
+  web-init:
+      build: ./web-app
+      command: /code/initserver.sh
+      volumes:
+        - ./web-app:/code
+      depends_on:
+        - ups
+  web:
+      build: ./web-app
+      command: /code/runserver.sh
+      volumes:
+        - ./web-app:/code
+      expose:
+        - "8000"
+      depends_on:
+        - web-init
+
+  nginx:
+     image: nginx:latest
+     ports:
+       - "8000:8000"
+     volumes:
+       - ./nginx/config:/etc/nginx/conf.d
+     depends_on:
+       - web
+
+
+volumes:
+  data-volume:

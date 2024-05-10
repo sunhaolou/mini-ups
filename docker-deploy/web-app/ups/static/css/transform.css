@@ -1,0 +1,8 @@
+/* CSS for image hover effect */
+.service-item img {
+    transition: transform 0.5s ease; /* Smooth transition for the transform property */
+}
+
+.service-item img:hover {
+    transform: scale(1.1); /* Scale up the image to 110% when hovered */
+}

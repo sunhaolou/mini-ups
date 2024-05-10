@@ -1,0 +1,24 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Update Profile</title>
+    <link rel="stylesheet" href="{% static 'css/profileUpdate.css' %}">
+</head>
+<body>
+    <main class="profile-container">
+        <h1>Update Profile</h1>
+        <form action="{% url 'profileUpdate' %}" method="post" autocomplete="off">
+            {% csrf_token %}
+            <div class="form-group">
+                {{ form.as_p }}
+            </div>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+        </form>
+        <a href="{% url 'passwordUpdate' %}" class="btn btn-primary">Change Password</a>
+        <a href="{% url 'profile' %}" class="btn btn-danger">Cancel</a>
+    </main>
+</body>
+</html>

@@ -1,0 +1,5 @@
+psycopg2
+threadpool
+google
+protobuf==3.20.*
+sqlalchemy
